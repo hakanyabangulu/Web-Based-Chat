@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerçek Zamanlı Sohbet</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #74ebd5, #acb6e5);
+    }
+    #chat-container, #username-container {
+      width: 95%;
+      max-width: 500px;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+    #username-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f8f9fa;
+    }
+    #username-input {
+      width: 90%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    #message-area {
+      height: 350px;
+      overflow-y: auto;
+      padding: 15px;
+      background-color: #f1f3f5;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .message {
+      margin: 8px 0;
+      padding: 10px 15px;
+      border-radius: 12px;
+      max-width: 80%;
+      word-wrap: break-word;
+      font-size: 15px;
+      line-height: 1.4;
+      background-color: #e9ecef;
+    }
+    .message.own {
+      background-color: #cce5ff;
+      margin-left: auto;
+      text-align: right;
+    }
+    #input-container {
+      display: flex;
+      gap: 10px;
+      padding: 15px 0 0 0;
+    }
+    #message-input {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    button {
+      padding: 12px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+      transform: translateY(-1px);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .hidden {
+      display: none;
+    }
+    #status {
+      font-size: 14px;
+      margin-top: 10px;
+      color: gray;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #adb5bd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="username-container">
+    <input type="text" id="username-input" placeholder="Kullanıcı adınızı girin...">
+    <button onclick="submitUsername()">Sohbete Başla</button>
+    <div id="status">Sunucuya bağlanıyor...</div>
+  </div>
+
+  <div id="chat-container" class="hidden">
+    <div id="message-area"></div>
+    <div id="input-container">
+      <input type="text" id="message-input" placeholder="Mesaj yaz...">
+      <button onclick="sendMessage()">Gönder</button>
+    </div>
+  </div>
+
+  <script>
+    let username = '';
+    let isConnected = false;
+    const ws = new WebSocket('ws://localhost:8765');
+
+    const statusDiv = document.getElementById('status');
+    const chatContainer = document.getElementById('chat-container');
+
+    ws.onopen = () => {
+      isConnected = true;
+      statusDiv.textContent = 'Bağlantı başarılı!';
+      if (username) openChat();
+    };
+
+    ws.onerror = (err) => {
+      console.error('Bağlantı hatası:', err);
+      statusDiv.textContent = '❌ Sunucuya bağlanılamadı!';
+    };
+
+    ws.onclose = () => {
+      isConnected = false;
+      if (chatContainer.classList.contains('hidden')) {
+        statusDiv.textContent = '🔌 Bağlantı kesildi!';
+      } else {
+        alert('Bağlantı kesildi. Sayfayı yenileyin.');
+      }
+    };
+
+    function submitUsername() {
+      const input = document.getElementById('username-input');
+      const name = input.value.trim();
+      if (name.length < 3) {
+        alert('Kullanıcı adı en az 3 karakter olmalıdır.');
+        return;
+      }
+      username = name;
+      if (isConnected) openChat();
+    }
+
+    function openChat() {
+      document.getElementById('username-container').remove();
+      chatContainer.classList.remove('hidden');
+      document.getElementById('message-input').focus();
+    }
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const messageEl = document.createElement('div');
+      messageEl.classList.add('message');
+      if (data.username === username) messageEl.classList.add('own');
+      messageEl.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+      const area = document.getElementById('message-area');
+      area.appendChild(messageEl);
+      area.scrollTop = area.scrollHeight;
+    };
+
+    function sendMessage() {
+      const input = document.getElementById('message-input');
+      const msg = input.value.trim();
+      if (!msg || !username || !isConnected) return;
+
+      const messageData = {
+        username: username,
+        message: msg
+      };
+      ws.send(JSON.stringify(messageData));
+      input.value = '';
+    }
+
+    document.getElementById('message-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    document.getElementById('username-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') submitUsername();
+    });
+  </script>
+
+</body>
+</html>
