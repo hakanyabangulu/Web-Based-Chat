@@ -61,9 +61,11 @@ Troubleshooting
     WebSocket Errors: Ensure client sends valid JSON.
 
 Login Screen :
+
 ![Ekran görüntüsü 2025-05-05 170331](https://github.com/user-attachments/assets/759b59f3-f686-4fc7-b03b-c8f3b16fc8c0)
 
 
 When runs :
+
 ![Ekran görüntüsü 2025-05-05 170230](https://github.com/user-attachments/assets/d61e2fc8-cc80-4a77-b72b-73039ba2f22c)
 
